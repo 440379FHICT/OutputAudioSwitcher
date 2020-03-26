@@ -10,7 +10,7 @@ import (
 	"os"
 	"os/exec"
 
-	//"strings"
+	"strings"
 
 	//"strconv"
 	"time"
@@ -25,28 +25,47 @@ func gethomedir() string {
 }
 
 func getnames() {
-	var devices string = gethomedir() + "\\audiodevices.txt"
-	deviceList, err := os.Open(devices)
-
+	var deviceList = make([]string, 2, 100)
+	psScript := gethomedir() + "\\getdevices.ps1"
+	getList := exec.Command("powershell.exe", "-noexit", "-file", psScript)
+	pipe, err := getList.StdoutPipe()
 	if err != nil {
-		log.Fatalf("failed opening file: %s", err)
+		panic(err)
 	}
 
-	scanner := bufio.NewScanner(deviceList)
-	scanner.Split(bufio.ScanLines)
-	var txtlines []string
+	getList.Start()
+	index := 0
+	num := 0
+	scanner := bufio.NewScanner(pipe)
 
 	for scanner.Scan() {
-		txtlines = append(txtlines, scanner.Text())
+
+		index++
+		if index < 6 {
+			continue
+		} else {
+			tekst := scanner.Text()
+			if tekst == "" {
+				continue
+			} else {
+				tekst = strings.Trim(tekst, " \t")
+				if tekst == "PS"+" "+gethomedir()+">" {
+					continue
+				} else {
+					if index >= 9 {
+						deviceList = append(deviceList, tekst)
+					} else {
+						tekst = strings.Trim(tekst, "\t")
+						deviceList[num] = tekst
+						num++
+					}
+
+				}
+			}
+		}
 	}
-
-	deviceList.Close()
-
-	arrLen := len(txtlines)
-
-	for i := 1; i <= arrLen-1; i++ {
-		fmt.Printf(txtlines[i])
-	}
+	fmt.Println(deviceList)
+	getList.Wait()
 
 }
 
