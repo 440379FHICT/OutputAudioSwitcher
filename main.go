@@ -3,7 +3,11 @@ package main
 
 import (
 	"bufio"
+	//"bytes"
+	"encoding/json"
 	"fmt"
+
+	//"io"
 
 	//"io/ioutil"
 	"log"
@@ -16,6 +20,26 @@ import (
 	"time"
 )
 
+type Config struct {
+	Devices struct {
+		AllDev  []string `json:"all"`
+		UsedDev []string `json:"used"`
+	}
+	Ftr bool `json:"firsttimerun"`
+}
+
+func LoadConf() (Config, error) {
+	var conf Config
+	confFile, err := os.Open(gethomedir() + "\\config.json")
+	defer confFile.Close()
+	if err != nil {
+		return conf, err
+	}
+	jsonParse := json.NewDecoder(confFile)
+	jsonParse.Decode(&conf)
+	return conf, err
+}
+
 func gethomedir() string {
 	dir, err := os.Getwd()
 	if err != nil {
@@ -24,7 +48,7 @@ func gethomedir() string {
 	return dir
 }
 
-func getnames() {
+func getnames() (list []string) {
 	var deviceList = make([]string, 2, 100)
 	psScript := gethomedir() + "\\getdevices.ps1"
 	getList := exec.Command("powershell.exe", "-noexit", "-file", psScript)
@@ -66,10 +90,10 @@ func getnames() {
 	}
 	fmt.Println(deviceList)
 	getList.Wait()
-
+	return deviceList
 }
 
-func firstTimeRun() {
+func firstTimeRun() (list []string) {
 
 	var psScript string = gethomedir() + "\\getdevices.ps1"
 	getList := exec.Command("powershell.exe", "-noexit", "-file", psScript)
@@ -77,7 +101,8 @@ func firstTimeRun() {
 
 	fmt.Println("Just a moment I'm getting the list of your devices for you....")
 	time.Sleep(5 * time.Second)
-	getnames()
+	list = getnames()
+	return list
 
 }
 
@@ -97,5 +122,8 @@ func switcher() {
 }
 
 func main() {
-	firstTimeRun()
+	config, _ := LoadConf()
+	config.Devices.AllDev = firstTimeRun()
+	fmt.Println(config.Devices.AllDev)
+
 }
